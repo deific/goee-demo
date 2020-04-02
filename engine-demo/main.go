@@ -5,6 +5,8 @@ import (
 	"github.com/deific/goee/core"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"time"
 )
 
@@ -43,6 +45,24 @@ func main() {
 	// 使用html模板
 	g.GET("/html", func(c *core.Context) {
 		c.HtmlTemplate(http.StatusOK, "index.tpl", core.HMap{"title": "张三", "now": time.Now()})
+	})
+	// 代理
+	g.GET("/proxy", func(c *core.Context) {
+		trueServer := "http://www.baidu.com/"
+		url, err := url.Parse(trueServer)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		log.Println("proxy to:", url)
+		proxy := httputil.NewSingleHostReverseProxy(url)
+		// Update the headers to allow for SSL redirection
+		c.Req.URL.Host = url.Host
+		c.Req.URL.Scheme = url.Scheme
+		c.Req.Header.Set("X-Forwarded-Host", c.Req.Header.Get("Host"))
+		c.Req.Host = url.Host
+		c.Req.URL.Path = url.Path
+		proxy.ServeHTTP(c.Writer, c.Req)
 	})
 
 	// 异常路由
